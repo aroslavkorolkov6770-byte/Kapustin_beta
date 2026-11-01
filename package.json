@@ -1,0 +1,44 @@
+{
+  "name": "tea",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "db:migrate": "node scripts/mysql/migrate.mjs",
+    "db:import-json": "node scripts/mysql/import-json.mjs",
+    "db:verify-json": "node scripts/mysql/verify-json.mjs",
+    "db:export-json": "node scripts/mysql/export-json.mjs",
+    "db:health": "node scripts/mysql/healthcheck.mjs",
+    "db:setup-local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/mysql/setup-local.ps1",
+    "db:stop-local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/mysql/stop-local.ps1"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.104.1",
+    "jszip": "^3.10.1",
+    "mammoth": "^1.12.0",
+    "mysql2": "^3.23.2",
+    "next": "^16.2.12",
+    "openai": "^6.39.0",
+    "pdf-parse": "^2.4.5",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "read-excel-file": "^9.3.5",
+    "sharp": "0.35.3",
+    "ws": "^8.21.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "^16.2.12",
+    "typescript": "^5"
+  },
+  "overrides": {
+    "postcss": "8.5.25",
+    "sharp": "0.35.3"
+  }
+}

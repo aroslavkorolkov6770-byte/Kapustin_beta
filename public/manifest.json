@@ -1,0 +1,30 @@
+{
+  "name": "Ватэс",
+  "short_name": "Ватэс",
+  "description": "Платформа обучения и знаний команды",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f7fa",
+  "theme_color": "#2e7d78",
+  "gcm_sender_id": "103953800507",
+  "icons": [
+    {
+      "src": "/vates-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/vates-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/vates-icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
