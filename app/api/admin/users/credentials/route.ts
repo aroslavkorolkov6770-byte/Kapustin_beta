@@ -34,12 +34,15 @@ export async function PUT(request: Request) {
         const login = typeof body.login === 'string' ? body.login.trim() : '';
         const password = typeof body.password === 'string' ? body.password : '';
 
-        if (!userId || !login || !password) {
-            return NextResponse.json({ error: 'Логин и пароль обязательны' }, { status: 400 });
+        if (!userId || !login) {
+            return NextResponse.json({ error: 'Укажите пользователя и логин' }, { status: 400 });
         }
 
-        if (login.length > 120 || password.length < 8 || password.length > 128) {
-            return NextResponse.json({ error: 'Логин должен быть короче 120 символов, пароль — от 8 до 128 символов' }, { status: 400 });
+        if (login.length > 120 || /[\s\u0000-\u001f\u007f]/u.test(login)) {
+            return NextResponse.json({ error: 'Логин должен содержать от 1 до 120 символов без пробелов' }, { status: 400 });
+        }
+        if ((body.password !== undefined && typeof body.password !== 'string') || (password && (password.length < 8 || password.length > 128))) {
+            return NextResponse.json({ error: 'Новый пароль должен содержать от 8 до 128 символов' }, { status: 400 });
         }
 
         const users = await getStoredUsers();
@@ -59,13 +62,15 @@ export async function PUT(request: Request) {
                 return user;
             }
 
-            updatedUser = normalizeStoredPassword(
-                {
+            // Для смены только логина пароль не запрашивается и его хеш сохраняется.
+            // Старый вариант одновременного изменения логина и пароля остаётся доступен.
+            updatedUser = password
+                ? normalizeStoredPassword({ ...user, login }, password)
+                : login === user.login ? user : {
                     ...user,
                     login,
-                },
-                password,
-            );
+                    authVersion: (user.authVersion || 0) + 1,
+                };
 
             return updatedUser;
         });

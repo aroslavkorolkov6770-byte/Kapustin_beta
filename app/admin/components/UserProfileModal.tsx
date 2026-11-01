@@ -144,11 +144,16 @@ export default function UserProfileModal({
                                     {editAuthMode ? 'Сохранить' : 'Редактировать'}
                                 </button>
                             </div>
+                            {editAuthMode && (
+                                <p role="note" style={{ color: 'var(--app-warning)', lineHeight: 1.55 }}>
+                                    Вы меняете доступ сотрудника <strong>{selectedProfileUser.name}</strong>. При смене логина передайте ему новый: прежний перестанет работать. {editAuthPass ? 'Также будет установлен указанный новый пароль.' : 'Если оставить пароль пустым, он сохранится.'}
+                                </p>
+                            )}
                             <div className="vates-auth-grid">
                                 <label>
                                     <span>Логин доступа</span>
                                     {editAuthMode ? (
-                                        <input value={editAuthLogin} onChange={(event) => setEditAuthLogin(event.target.value)} />
+                                        <input maxLength={120} value={editAuthLogin} onChange={(event) => setEditAuthLogin(event.target.value)} />
                                     ) : (
                                         <strong>{selectedProfileUser.login}</strong>
                                     )}
@@ -156,7 +161,7 @@ export default function UserProfileModal({
                                 <label>
                                     <span>Новый пароль</span>
                                     {editAuthMode ? (
-                                        <input type="password" value={editAuthPass} onChange={(event) => setEditAuthPass(event.target.value)} placeholder="Введите новый пароль" />
+                                        <input type="password" value={editAuthPass} onChange={(event) => setEditAuthPass(event.target.value)} placeholder="Пусто — сохранить прежний пароль" />
                                     ) : (
                                         <strong className="is-muted">Скрыт</strong>
                                     )}

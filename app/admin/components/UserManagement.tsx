@@ -4,6 +4,7 @@ import { adminIn, modalOverlay, modalContentSmall, saveBtn } from './adminStyles
 import CustomIcon from '@/app/components/CustomIcon';
 
 import { getVisibleWorkspaceUsers } from '@/app/lib/userVisibility';
+import { applyClientAuthState } from '@/app/lib/authClient';
 
 export default function UserManagement({
     users, setUsers, userAvatars, usersStats, totalRouteSteps, totalBasicsModules,
@@ -19,6 +20,10 @@ export default function UserManagement({
     const [passwordResetModal, setPasswordResetModal] = useState({ show: false, userId: '', userName: '' });
     const [temporaryPassword, setTemporaryPassword] = useState('');
     const [isResettingPassword, setIsResettingPassword] = useState(false);
+    const [loginEditModal, setLoginEditModal] = useState({ show: false, userId: '', userName: '', login: '' });
+    const [employeeLogin, setEmployeeLogin] = useState('');
+    const [loginError, setLoginError] = useState('');
+    const [isSavingLogin, setIsSavingLogin] = useState(false);
     const visibleUsers = getVisibleWorkspaceUsers(Array.isArray(users) ? users : []);
 
     const getUserProgress = (user: any) => {
@@ -108,6 +113,51 @@ export default function UserManagement({
         }
 
         return user?.login || '';
+    };
+
+    const openLoginEditModal = (user: { id: string; name: string; login: string }) => {
+        setLoginEditModal({ show: true, userId: user.id, userName: user.name, login: user.login });
+        setEmployeeLogin(user.login);
+        setLoginError('');
+    };
+
+    const closeLoginEditModal = () => {
+        if (isSavingLogin) return;
+        setLoginEditModal({ show: false, userId: '', userName: '', login: '' });
+        setLoginError('');
+    };
+
+    const saveEmployeeLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (isSavingLogin) return;
+        const login = employeeLogin.trim();
+        if (!login || login.length > 120 || /[\s\u0000-\u001f\u007f]/u.test(login)) {
+            setLoginError('Введите логин от 1 до 120 символов без пробелов.');
+            return;
+        }
+
+        setIsSavingLogin(true);
+        setLoginError('');
+        try {
+            const response = await fetch('/api/admin/users/credentials', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: loginEditModal.userId, login }),
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || !result?.user) throw new Error(result?.error || 'Не удалось изменить логин.');
+
+            setUsers(users.map((user: { id: string }) => user.id === result.user.id ? result.user : user));
+            // Если администратор изменил свой логин, синхронизируем браузер с новой серверной сессией.
+            const currentId = localStorage.getItem('current_user_id') || sessionStorage.getItem('current_user_id');
+            if (currentId === result.user.id) applyClientAuthState(result.user);
+            setLoginEditModal({ show: false, userId: '', userName: '', login: '' });
+            setShowSuccessModal({ show: true, title: 'ЛОГИН ИЗМЕНЁН', text: `Новый логин для ${loginEditModal.userName} сохранён. Пароль остался прежним.` });
+        } catch (error) {
+            setLoginError(error instanceof Error ? error.message : 'Не удалось изменить логин.');
+        } finally {
+            setIsSavingLogin(false);
+        }
     };
 
     const handleCreateUser = () => {
@@ -329,6 +379,9 @@ export default function UserManagement({
                                             <div className="vates-row-actions">
                                                 <button type="button" className="vates-button compact secondary" onClick={() => setSelectedProfileUser(u)}>Профиль</button>
                                                 {!u.systemAccount && !u.ghostAccount && (
+                                                    <button type="button" className="vates-button compact secondary" title="Сменить логин" aria-label={`Сменить логин сотрудника ${u.name}`} onClick={() => openLoginEditModal(u)}>Логин</button>
+                                                )}
+                                                {!u.systemAccount && !u.ghostAccount && (
                                                     <button type="button" className="vates-icon-action" title="Сбросить пароль" onClick={() => openPasswordResetModal(u)}><CustomIcon name="refresh" size={17} color="currentColor" accent="none" /></button>
                                                 )}
                                                 {!isProtectedUser(u) && (
@@ -411,6 +464,23 @@ export default function UserManagement({
                             <button className="hover-unified-app" onClick={executeDelete} style={{...saveBtn, background: '#ff4d4d', color: '#fff', flex: 1} as any}>УДАЛИТЬ</button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {loginEditModal.show && (
+                <div className="vates-employee-modal-overlay" style={modalOverlay as React.CSSProperties} onClick={closeLoginEditModal}>
+                    <section className="vates-employee-create-modal" role="dialog" aria-modal="true" aria-labelledby="employee-login-title" onClick={event => event.stopPropagation()}>
+                        <div className="vates-employee-create-header"><span>Данные авторизации</span><h2 id="employee-login-title">Смена логина</h2></div>
+                        <form onSubmit={saveEmployeeLogin}>
+                            <p style={{ color: 'var(--app-warning)', lineHeight: 1.55 }}>
+                                Вы меняете логин сотрудника <strong>{loginEditModal.userName}</strong>. Передайте ему новый логин: прежний перестанет работать. Пароль и учебный прогресс сохранятся.
+                            </p>
+                            <p>Текущий логин: <strong>{loginEditModal.login}</strong></p>
+                            <label className="vates-employee-form-field"><span>Новый логин</span><input value={employeeLogin} onChange={event => setEmployeeLogin(event.target.value)} autoComplete="off" maxLength={120} placeholder="Новый логин сотрудника" disabled={isSavingLogin} required /></label>
+                            {loginError && <p role="alert" style={{ color: 'var(--app-danger)' }}>{loginError}</p>}
+                            <div className="vates-employee-create-actions"><button type="button" className="vates-button secondary" onClick={closeLoginEditModal} disabled={isSavingLogin}>Отмена</button><button type="submit" className="vates-button primary" disabled={isSavingLogin}>{isSavingLogin ? 'Сохраняем...' : 'Сохранить логин'}</button></div>
+                        </form>
+                    </section>
                 </div>
             )}
 

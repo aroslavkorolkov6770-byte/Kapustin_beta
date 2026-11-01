@@ -23,6 +23,12 @@ function ProfileContent() {
     const [newLogin, setNewLogin] = useState('');
     const [newPass, setNewPass] = useState('');
     const [isNewPasswordVisible, setIsNewPasswordVisible] = useState(false);
+    const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+    const [loginDraft, setLoginDraft] = useState('');
+    const [loginPassword, setLoginPassword] = useState('');
+    const [isSavingLogin, setIsSavingLogin] = useState(false);
+    const [loginError, setLoginError] = useState('');
+    const [loginSuccess, setLoginSuccess] = useState('');
     
     const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
     
@@ -162,6 +168,59 @@ function ProfileContent() {
         setIsAuthModalOpen(false);
         setNewPass('');
         setIsNewPasswordVisible(false);
+    };
+
+    const openLoginModal = () => {
+        setLoginDraft(userLogin);
+        setLoginPassword('');
+        setLoginError('');
+        setLoginSuccess('');
+        setIsLoginModalOpen(true);
+    };
+
+    const closeLoginModal = () => {
+        if (isSavingLogin) return;
+        setIsLoginModalOpen(false);
+        setLoginPassword('');
+        setLoginError('');
+    };
+
+    const handleChangeLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (isSavingLogin) return;
+        const nextLogin = loginDraft.trim();
+        if (!nextLogin || nextLogin.length > 120 || /[\s\u0000-\u001f\u007f]/u.test(nextLogin)) {
+            setLoginError('Введите логин от 1 до 120 символов без пробелов.');
+            return;
+        }
+        if (!loginPassword) {
+            setLoginError('Введите текущий пароль.');
+            return;
+        }
+
+        setIsSavingLogin(true);
+        setLoginError('');
+        try {
+            const response = await fetch('/api/account/login', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ login: nextLogin, currentPassword: loginPassword }),
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || !result?.user) throw new Error(result?.error || 'Не удалось изменить логин.');
+
+            // Обновляем данные текущего пользователя, сохраняя его ID и выбранный режим просмотра.
+            applyClientAuthState(result.user);
+            setUserLogin(result.user.login);
+            setNewLogin(result.user.login);
+            setLoginPassword('');
+            setIsLoginModalOpen(false);
+            setLoginSuccess('Логин обновлён. Для следующего входа используйте новый логин и прежний пароль.');
+        } catch (error) {
+            setLoginError(error instanceof Error ? error.message : 'Не удалось изменить логин.');
+        } finally {
+            setIsSavingLogin(false);
+        }
     };
 
     const handleLogout = () => {
@@ -319,12 +378,16 @@ function ProfileContent() {
                                         <span className="vates-eyebrow">Учетная запись</span>
                                         <h3>Данные авторизации</h3>
                                     </div>
-                                    <button type="button" className="vates-button secondary compact" onClick={handleOpenAuthChange}>Сменить пароль</button>
+                                    <div className="vates-profile-person-actions">
+                                        <button type="button" className="vates-button secondary compact" onClick={openLoginModal}>Сменить логин</button>
+                                        <button type="button" className="vates-button secondary compact" onClick={handleOpenAuthChange}>Сменить пароль</button>
+                                    </div>
                                 </div>
                                 <div className="vates-auth-grid">
                                     <label><span>Логин доступа</span><strong>{userLogin || 'Нет данных'}</strong></label>
                                     <label><span>Пароль</span><strong className="is-muted">Скрыт</strong></label>
                                 </div>
+                                {loginSuccess && <p role="status">{loginSuccess}</p>}
                             </section>
 
                             
@@ -395,6 +458,23 @@ function ProfileContent() {
                                 
                             </div>
                             <div className="vates-own-profile-dialog-actions"><button type="button" className="vates-button secondary" onClick={() => setIsEditing(false)}>Отмена</button><button type="button" className="vates-button primary" onClick={handleSaveProfile}>Сохранить изменения</button></div>
+                        </section>
+                    </div>
+                )}
+
+                {isLoginModalOpen && (
+                    <div className="vates-own-profile-overlay" onClick={closeLoginModal}>
+                        <section className="vates-own-profile-dialog vates-own-profile-password-dialog" role="dialog" aria-modal="true" aria-labelledby="own-profile-login-title" onClick={event => event.stopPropagation()}>
+                            <header><div><span className="vates-eyebrow">Данные авторизации</span><h2 id="own-profile-login-title">Смена логина</h2></div><button type="button" className="vates-icon-button" onClick={closeLoginModal} disabled={isSavingLogin} aria-label="Закрыть смену логина"><CustomIcon name="close" size={18} color="currentColor" /></button></header>
+                            <form onSubmit={handleChangeLogin}>
+                                <div className="vates-own-profile-form-grid">
+                                    <label><span>Новый логин</span><input value={loginDraft} onChange={event => setLoginDraft(event.target.value)} autoComplete="username" maxLength={120} placeholder="Введите новый логин" disabled={isSavingLogin} required /></label>
+                                    <label><span>Текущий пароль</span><input type="password" value={loginPassword} onChange={event => setLoginPassword(event.target.value)} autoComplete="current-password" maxLength={128} placeholder="Подтвердите текущий пароль" disabled={isSavingLogin} required /></label>
+                                    <p>Пароль и учебный прогресс сохранятся. В других окнах потребуется войти заново.</p>
+                                    {loginError && <p role="alert" style={{ color: 'var(--app-danger)' }}>{loginError}</p>}
+                                </div>
+                                <div className="vates-own-profile-dialog-actions"><button type="button" className="vates-button secondary" onClick={closeLoginModal} disabled={isSavingLogin}>Отмена</button><button type="submit" className="vates-button primary" disabled={isSavingLogin}>{isSavingLogin ? 'Сохраняем...' : 'Сохранить логин'}</button></div>
+                            </form>
                         </section>
                     </div>
                 )}
